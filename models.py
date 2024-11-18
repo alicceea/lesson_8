@@ -7,8 +7,6 @@ class Product:
     description: str
     quantity: int
 
-
-
     def __init__(self, name, price, description, quantity):
         self.name = name
         self.price = price
@@ -20,10 +18,7 @@ class Product:
         Верните True если количество продукта больше или равно запрашиваемому
             и False в обратном случае
         """
-        if self.quantity >= quantity:
-            return True
-        else:
-            return False
+        return self.quantity >= quantity
 
     def buy(self, quantity):
         """
@@ -35,22 +30,15 @@ class Product:
             print("Продуктов достаточно")
             self.quantity = self.quantity - quantity
         else:
-            raise ValueError("Не хватает продуктов на складе")
+            difference = quantity - self.quantity
+            raise ValueError(f"Не хватает {difference} '{self.name}' на складе")
 
     def __hash__(self):
         return hash(self.name + self.description)
 
 
 class Cart:
-
     products: dict[Product, int]
-
-    def get_products(self):
-        print()
-        for key, value in self.products.items():
-            print(key.name, value)
-
-        return self.products
 
     def __init__(self):
         # По-умолчанию корзина пустая
@@ -73,14 +61,14 @@ class Cart:
         Если remove_count больше, чем количество продуктов в позиции, то удаляется вся позиция
         """
         if product not in self.products:
-            raise (ValueError('Такого продукта нет в корзине'))
-        if remove_count is None or remove_count > self.products[product]:
+            raise (ValueError(f"Продукта '{product.name}' нет в корзине"))
+        if remove_count is None or remove_count >= self.products[product]:
             del self.products[product]
         else:
             self.products[product] -= remove_count
 
     def clear(self):
-            self.products.clear()
+        self.products.clear()
 
     def get_total_price(self) -> float:
         total_price = 0
@@ -95,8 +83,9 @@ class Cart:
         В этом случае нужно выбросить исключение ValueError
         """
         for product, value in self.products.items():
-            if product.quantity < value:
+            if not product.check_quantity(value):
                 raise ValueError(f"Не хватает '{product.name}' на складе")
 
         for product, value in self.products.items():
-            product.quantity -= value
+            product.buy(value)
+        self.clear()

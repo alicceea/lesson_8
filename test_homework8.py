@@ -1,9 +1,9 @@
 """
 Протестируйте классы из модуля homework/models.py
 """
-from pathlib import Path
 
 import pytest
+
 from models import Product, Cart
 
 
@@ -11,17 +11,21 @@ from models import Product, Cart
 def product():
     return Product("book", 100, "This is a book", 1000)
 
+
 @pytest.fixture
 def cart():
     return Cart()
 
+
 @pytest.fixture
-def iphon():
+def iphone():
     return Product('iphone', 10000, 'luxary', 10)
+
 
 @pytest.fixture
 def apple():
     return Product('apple', 10, 'luxary', 10)
+
 
 class TestProducts():
     """
@@ -30,23 +34,26 @@ class TestProducts():
     """
 
     def test_product_check_quantity(self, product):
-        assert True == product.check_quantity(-100)
-        assert True == product.check_quantity(0)
-        assert True == product.check_quantity(1000)
-        assert False == product.check_quantity(1500)
+        assert product.check_quantity(1000) is True
+        assert product.check_quantity(1500) is False
+        assert product.check_quantity(1) is True
 
     def test_product_buy(self, product):
         product.buy(700)
 
-        assert 300 == product.quantity
+        assert product.quantity == 300
 
     def test_product_buy_more_than_available(self, product):
-        try:
+        with pytest.raises(ValueError) as excinfo:
             product.buy(7000)
-        except ValueError:
-            print('Превышено количество продуктов')
+        assert str(excinfo.value) in "Не хватает 6000 'book' на складе"
+        assert product.quantity is 1000
 
-        assert 1000 == product.quantity
+        product.buy(900)
+        assert product.quantity is 100
+
+        product.buy(100)
+        assert product.quantity is 0
 
 
 class TestCart:
@@ -59,57 +66,51 @@ class TestCart:
 
     def test_add_product(self, cart, apple):
         cart.add_product(apple, buy_count=5)
-        products = cart.get_products()
+        products = cart.products
 
-        assert 1 == products.__len__()
-        assert 5 == products.get(apple)
+        assert products.__len__() is 1
+        assert products.get(apple) is 5
 
-    def test_remove_product(self, cart, apple):
-        hasError = False
-        try:
+    def test_remove_product_error(self, cart, apple):
+        with pytest.raises(ValueError) as excinfo:
             cart.remove_product(apple)
-        except ValueError:
-            hasError = True
+        assert str(excinfo.value) in "Продукта 'apple' нет в корзине"
 
-        assert hasError
-
+    def test_remove_product_success(self, cart, apple, iphone, product):
         cart.add_product(apple, buy_count=5)
+        cart.add_product(iphone, buy_count=5)
+        cart.add_product(product, buy_count=5)
+
         cart.remove_product(apple)
-        assert 0 == cart.products.__len__()
+        cart.remove_product(iphone, 2)
+        cart.remove_product(product, 10)
 
-        cart.add_product(apple,5)
-        cart.remove_product(apple,2)
-        assert 1 == cart.products.__len__()
-        assert 3 == cart.products.get(apple)
-
-        cart.add_product(apple, 5)
-        cart.remove_product(apple, 10)
-        assert 0 == cart.products.__len__()
+        assert cart.products.get(apple) is None
+        assert cart.products.get(iphone) is 3
+        assert cart.products.get(product) is None
+        assert cart.products.__len__() is 1
 
     def test_clear(self, cart, apple):
         cart.add_product(apple, 5)
         cart.clear()
-        assert 0 == cart.products.__len__()
+        assert cart.products.__len__() is 0
 
-    def test_get_total_price(self, cart, iphon, apple):
-        cart.add_product(iphon)
+    def test_get_total_price(self, cart, iphone, apple):
+        cart.add_product(iphone)
         cart.add_product(apple, 15)
-        assert 10150 == cart.get_total_price()
+        assert cart.get_total_price() == 10150
 
-    def test_buy(self, cart, iphon, apple):
-        cart.add_product(iphon)
+    def test_buy_error(self, cart, iphone, apple):
+        cart.add_product(iphone)
         cart.add_product(apple, 15)
-        hasError = False
-        try:
+        with pytest.raises(ValueError) as excinfo:
             cart.buy()
-        except ValueError:
-            hasError = True
+        assert str(excinfo.value) in "Не хватает 'apple' на складе"
+        assert iphone.quantity is 10
 
-        assert hasError
-
-        assert 10 == iphon.quantity
-
-        cart.remove_product(apple, 8)
+    def test_buy_success(self, cart, iphone, apple):
+        cart.add_product(iphone)
+        cart.add_product(apple, 8)
         cart.buy()
-        assert 9 == iphon.quantity
-        assert 3 == apple.quantity
+        assert iphone.quantity is 9
+        assert apple.quantity is 2
